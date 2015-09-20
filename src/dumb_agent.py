@@ -25,7 +25,7 @@ class Agent(object):
 
     def allGoForward(self):
         self.updateTanks()
-        commands = [Command(tank.index, 1, 0, False) for tank in self.tanks]
+        commands = [Command(tank.index, 1000, 0, False) for tank in self.tanks]
         results = self.bzrc.do_commands(commands)
 
     def allTurn(self):
