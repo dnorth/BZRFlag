@@ -1,5 +1,6 @@
-import sys, argparse, time
+import sys, argparse, time, threading
 from bzrc import BZRC, Command
+from time import sleep
 
 # --------------------------------- VARIABLES
 desc=''' Example:
@@ -9,25 +10,59 @@ desc=''' Example:
 class Agent(object):
     def __init__(self, bzrc):
         self.bzrc = bzrc
+        self.tanks = []
         self.constants = self.bzrc.get_constants()
         self.commands = []
         self.time_diff = 0
+        self.shoot_thread = None
+        self.stop = False
 
-    def tick(self, time_diff):
-        myTanks = self.bzrc.get_mytanks()
-        print "Time difference: " + str(time_diff)
-        for tank in myTanks:
-            #Command takes 4 Parameters- (Tank Index, Speed, Angular Velocity, Whether or not to be shooting)
-            command = Command(tank.index, 1, 60, True)
-            self.commands.append(command)
+    def updateTanks(self):
+        self.tanks = self.bzrc.get_mytanks()
 
-        results = self.bzrc.do_commands(self.commands)
+    def allGoForward(self):
+        self.updateTanks()
+        commands = [Command(tank.index, 1, 0, False) for tank in self.tanks]
+        results = self.bzrc.do_commands(commands)
+
+    def allTurn(self):
+        self.updateTanks()
+        commands = [Command(tank.index, 0, 60, False) for tank in self.tanks]
+        results = self.bzrc.do_commands(commands)
+
+    def startShooting(self):
+        while not self.stop:
+            self.updateTanks()
+            for tank in self.tanks:
+                self.bzrc.shoot(tank)
+            sleep(2)
 
 # --------------------------------- FUNCTIONS
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
     agent = Agent(bzrc)
     return bzrc, agent
+
+def runTimer(bzrc, agent, log):
+    start_time = time.time()
+    # agent.shoot_thread = threading.Thread(target=agent.startShooting)
+    # agent.shoot_thread.start()
+    while True:
+        try:
+            if log:
+                print "Moving forward, 5 seconds"
+            agent.allGoForward()
+            sleep(5)
+            if log:
+                print "Turning 60 degrees"
+            agent.allTurn()
+            sleep(1)
+        except KeyboardInterrupt:
+            print "Exiting due to keyboard interrupt."
+            agent.stop = True
+            agent.shoot_thread.join()
+            bzrc.close()
+            return      
 
 # --------------------------------- MAIN FUNCTION
 def readCommandLine():
@@ -45,17 +80,10 @@ if __name__ == '__main__':
         raise
     hostname = args.host
     socket = int(args.socket)
+    log = args.log
 
     bzrc, agent = startRobot(hostname, socket)
 
-    prev_time = time.time()
+    runTimer(bzrc, agent, log)
 
 
-    # Run the agent
-    try:
-        while True:
-            time_diff = time.time() - prev_time
-            agent.tick(time_diff)
-    except KeyboardInterrupt:
-        print "Exiting due to keyboard interrupt."
-        bzrc.close()
