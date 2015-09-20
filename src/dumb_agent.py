@@ -16,8 +16,11 @@ class Agent(object):
         self.time_diff = 0
         self.shoot_thread = None
         self.stop = False
+        self.shoot = False
+
 
     def updateTanks(self):
+        self.shoot = False
         self.tanks = self.bzrc.get_mytanks()
 
     def allGoForward(self):
@@ -30,12 +33,10 @@ class Agent(object):
         commands = [Command(tank.index, 0, 60, False) for tank in self.tanks]
         results = self.bzrc.do_commands(commands)
 
-    def startShooting(self):
-        while not self.stop:
-            self.updateTanks()
-            for tank in self.tanks:
-                self.bzrc.shoot(tank)
-            sleep(2)
+    def allShoot(self):
+        self.updateTanks()
+        [self.bzrc.shoot(tank.index) for tank in self.tanks]
+        return
 
 # --------------------------------- FUNCTIONS
 def startRobot(hostname, socket):
@@ -52,7 +53,12 @@ def runTimer(bzrc, agent, log):
             if log:
                 print "Moving forward, 5 seconds"
             agent.allGoForward()
-            sleep(5)
+            agent.allShoot()
+            sleep(2)
+            agent.allShoot()
+            sleep(2)
+            agent.allShoot()
+            sleep(1)
             if log:
                 print "Turning 60 degrees"
             agent.allTurn()
@@ -80,7 +86,10 @@ if __name__ == '__main__':
         raise
     hostname = args.host
     socket = int(args.socket)
-    log = args.log
+    if args.log == "True":
+        log = True
+    else:
+        log = False
 
     bzrc, agent = startRobot(hostname, socket)
 
