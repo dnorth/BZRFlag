@@ -24,7 +24,7 @@ class Agent(object):
         self.bases = self.getBases()
         self.color = self.getMyColor()
         self.s = 5
-        self.alpha, self.beta = 5, 10
+        self.alpha, self.beta, self.phi = 5, 10, 0.5
         self.OBSTACLE_RADIUS = 2
         self.s_obstacles = self.getObstacles()
         self.d_obstacles = {}
@@ -49,22 +49,6 @@ class Agent(object):
             obstacles[n]['r'] = self.getDistance(obstacles[n]['x'], obstacles[n]['y'], obstacle[0][0], obstacle[0][1]) * self.OBSTACLE_RADIUS
             n +=1
         return obstacles
-
-        # n = 0
-        # obstacles = {}
-        # for obstacle in self.bzrc.get_obstacles():
-        #     for x in range(len(obstacle)):
-        #         obstacles[n] = {}
-        #         obstacles[n]['x'] = obstacle[x][0]
-        #         obstacles[n]['y'] = obstacle[x][1]
-        #         next = x+1
-        #         if next >= len(obstacle):
-        #             next = 0
-        #         dist = self.getDistance(obstacle[x][0], obstacle[x][1], obstacle[next][0], obstacle[next][1])
-        #         obstacles[n]['r'] = dist * 0.25
-        #         n += 1
-        # # print obstacles
-        # return obstacles
 
     def getTankFromCallsign(self, callsign):
         return filter(lambda x : x.callsign == callsign, self.tanks)[0]
@@ -137,7 +121,8 @@ class Agent(object):
         for tank in self.tanks:
             if tank.status == 'alive':
                 if tank.callsign in self.goals:
-                    self.move[tank.callsign] = list(self.seekGoal(tank))
+                    self.move[tank.callsign] = {}
+                    self.move[tank.callsign]['attraction'] = list(self.seekGoal(tank))
 
     def seekGoal(self, tank):
         x_diff = 0
@@ -168,9 +153,7 @@ class Agent(object):
         for tank in self.tanks:
             if tank.status == 'alive':
                 if tank.callsign in self.d_obstacles:
-                    x_diff, y_diff = self.avoidObstacle(tank)
-                    self.move[tank.callsign][0] += x_diff
-                    self.move[tank.callsign][1] += y_diff
+                    self.move[tank.callsign]['repulsion'] = list(self.avoidObstacle(tank))
 
     def avoidObstacle(self, tank, tangential=True):
         x_diff = 0
@@ -186,15 +169,28 @@ class Agent(object):
             elif o['distance'] > self.s + o['r']:
                 continue
         if tangential:
-            x, y = dc(x_diff, y_diff)
+            x = dc(x_diff)
+            y = dc(y_diff)
             x_diff += -y
             y_diff += x
         return x_diff, y_diff
 
+    def setTangentials(self):
+        for tank in self.tanks:
+            if tank.status == 'alive':
+                if tank.callsign in self.move:
+                    self.move[tank.callsign]['tangential'] = list(self.getTangential(tank))
+
+    def getTangential(self, tank):
+        x, y = dc(self.move[tank.callsign]['repulsion'])
+        return self.phi * (x - y), self.phi * (y + x)
+
     def moveTanks(self):
         for callsign, m in self.move.items():
+            m_x = m['attraction'][0] + m['repulsion'][0] + m['tangential'][0]
+            m_y = m['attraction'][1] + m['repulsion'][1] + m['tangential'][1]
             tank = self.getTankFromCallsign(callsign)
-            self.moveToPosition(tank, tank.x+m[0], tank.y+m[1])
+            self.moveToPosition(tank, tank.x+m_x, tank.y+m_y)
 
 # --------------------------------- FUNCTIONS
 def startRobot(hostname, socket):
@@ -211,6 +207,7 @@ def runTimer(bzrc, agent, log):
             agent.setObstacleInfo()
             agent.seekGoals()
             agent.avoidObstacles()
+            agent.setTangentials()
             agent.moveTanks()
         except KeyboardInterrupt:
             print "Exiting due to keyboard interrupt."
@@ -241,6 +238,8 @@ def plotToGNU(bzrc, agent):
             x_diff, y_diff = agent.avoidObstacle(fakeTank)
             f.write('set arrow from %s, %s to %s, %s lt 3\n' % (fakeTank.x, fakeTank.y, fakeTank.x + x_diff, fakeTank.y + y_diff))
             x_diff, y_diff = agent.seekGoal(fakeTank)
+            f.write('set arrow from %s, %s to %s, %s lt 3\n' % (fakeTank.x, fakeTank.y, fakeTank.x + x_diff, fakeTank.y + y_diff))
+            x_diff, y_diff = agent.getTangential(fakeTank)
             f.write('set arrow from %s, %s to %s, %s lt 3\n' % (fakeTank.x, fakeTank.y, fakeTank.x + x_diff, fakeTank.y + y_diff))
             y+= 25
         x += 25
