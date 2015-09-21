@@ -164,19 +164,15 @@ class Agent(object):
                 t[obstacle]['angle'] = self.getTankAngle(tank, self.s_obstacles[obstacle]['x'], self.s_obstacles[obstacle]['y'])
                 t[obstacle]['r'] = self.s_obstacles[obstacle]['r']
 
-    def avoidObstacles(self, tangential=True):
+    def avoidObstacles(self):
         for tank in self.tanks:
             if tank.status == 'alive':
                 if tank.callsign in self.d_obstacles:
                     x_diff, y_diff = self.avoidObstacle(tank)
-                    if tangential:
-                        x, y = dc(x_diff, y_diff)
-                        x_diff += -y
-                        y_diff += x
                     self.move[tank.callsign][0] += x_diff
                     self.move[tank.callsign][1] += y_diff
 
-    def avoidObstacle(self, tank):
+    def avoidObstacle(self, tank, tangential=True):
         x_diff = 0
         y_diff = 0
         for obstacle, o in self.d_obstacles[tank.callsign].items():
@@ -189,15 +185,16 @@ class Agent(object):
                 y_diff += -1 * self.beta * (self.s + o['r'] - o['distance']) * sin(o['angle'])
             elif o['distance'] > self.s + o['r']:
                 continue
+        if tangential:
+            x, y = dc(x_diff, y_diff)
+            x_diff += -y
+            y_diff += x
         return x_diff, y_diff
 
     def moveTanks(self):
         for callsign, m in self.move.items():
             tank = self.getTankFromCallsign(callsign)
             self.moveToPosition(tank, tank.x+m[0], tank.y+m[1])
-
-    def followTangential(self):
-
 
 # --------------------------------- FUNCTIONS
 def startRobot(hostname, socket):
@@ -214,7 +211,6 @@ def runTimer(bzrc, agent, log):
             agent.setObstacleInfo()
             agent.seekGoals()
             agent.avoidObstacles()
-            agent.followTangential()
             agent.moveTanks()
         except KeyboardInterrupt:
             print "Exiting due to keyboard interrupt."
