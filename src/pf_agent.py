@@ -21,8 +21,9 @@ class Agent(object):
         self.shoot = False
         self.bases = self.getBases()
         self.color = self.getMyColor()
-        self.s = 10
+        self.s = 5
         self.alpha, self.beta = 5, 10
+        self.OBSTACLE_RADIUS = 2
         self.s_obstacles = self.getObstacles()
         self.d_obstacles = {}
         self.move = {}
@@ -43,9 +44,8 @@ class Agent(object):
             obstacles[n] = {}
             obstacles[n]['x'] = (obstacle[0][0] + obstacle[2][0]) / 2
             obstacles[n]['y'] = (obstacle[0][1] + obstacle[2][1]) / 2
-            obstacles[n]['r'] = self.getDistance(obstacles[n]['x'], obstacles[n]['y'], obstacle[0][0], obstacle[0][1]) * 1.1
+            obstacles[n]['r'] = self.getDistance(obstacles[n]['x'], obstacles[n]['y'], obstacle[0][0], obstacle[0][1]) * self.OBSTACLE_RADIUS
             n +=1
-        print obstacles
         return obstacles
 
         # n = 0
@@ -167,9 +167,6 @@ class Agent(object):
             if tank.status == 'alive':
                 if tank.callsign in self.d_obstacles:
                     x_diff, y_diff = self.avoidObstacle(tank)
-                    # print "tick"
-                    # print x_diff, y_diff
-                    # print self.move[tank.callsign][0], self.move[tank.callsign][1]
                     self.move[tank.callsign][0] += x_diff
                     self.move[tank.callsign][1] += y_diff
 
@@ -178,8 +175,9 @@ class Agent(object):
         y_diff = 0
         for obstacle, o in self.d_obstacles[tank.callsign].items():
             if o['distance'] < o['r']:
-                x_diff += -1 * cos(o['angle']) * (5000 / o['distance'])
-                y_diff += -1 * sin(o['angle']) * (5000 / o['distance'])
+                if o['distance'] != 0:
+                    x_diff += -500 * cos(o['angle']) * (1 / o['distance'])
+                    y_diff += -500 * sin(o['angle']) * (1 / o['distance'])
             elif o['r'] <= o['distance'] and o['distance'] <= self.s + o['r']:
                 x_diff += -1 * self.beta * (self.s + o['r'] - o['distance']) * cos(o['angle'])
                 y_diff += -1 * self.beta * (self.s + o['r'] - o['distance']) * sin(o['angle'])
@@ -202,7 +200,6 @@ def runTimer(bzrc, agent, log):
     start_time = time.time()
     while True:
         try:
-            print "tick"
             agent.update()
             agent.setGoalInfo()
             agent.setObstacleInfo()
@@ -215,12 +212,44 @@ def runTimer(bzrc, agent, log):
             bzrc.close()
             return      
 
+def plotToGNU(bzrc, agent):
+    f = open('plot.gpi','w')
+    f.write('set title "Potential Fields Plot\n')
+    f.write('set xrange [-400.0: 400.0]\n')
+    f.write('set yrange [-400.0: 400.0]\n')
+    f.write('unset key\n')
+    f.write('set size square\n')
+
+    agent.update()
+    agent.setGoalInfo()
+    agent.setObstacleInfo()
+    fakeTank = agent.tanks[0]
+    x = -400
+    while x < 400:
+        fakeTank.x = x
+        y = -400
+        while y < 400:
+            fakeTank.y = y
+            agent.setGoalInfo()
+            agent.setObstacleInfo()
+            x_diff, y_diff = agent.avoidObstacle(fakeTank)
+            f.write('set arrow from %s, %s to %s, %s lt 3\n' % (fakeTank.x, fakeTank.y, fakeTank.x + x_diff, fakeTank.y + y_diff))
+            x_diff, y_diff = agent.seekGoal(fakeTank)
+            f.write('set arrow from %s, %s to %s, %s lt 3\n' % (fakeTank.x, fakeTank.y, fakeTank.x + x_diff, fakeTank.y + y_diff))
+            y+= 25
+        x += 25
+
+
+    f.write('plot \'-\' with lines\n0 0 0 0\ne')
+    f.close()
+
 # --------------------------------- MAIN FUNCTION
 def readCommandLine():
     parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--host', '-p', required=True, default='localhost', help='Hostname to connect to')
     parser.add_argument('--socket', '-s', required=True, default=0, help='Team socket to connect to')
     parser.add_argument('--log', '-l', required=False, default=False, help='Boolean value for logging or no logging')
+    parser.add_argument('--plot', required=False, default=False, help='Plot tangential fields')
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -238,6 +267,9 @@ if __name__ == '__main__':
 
     bzrc, agent = startRobot(hostname, socket)
 
-    runTimer(bzrc, agent, log)
+    if not args.plot:
+        runTimer(bzrc, agent, log)
+    else:
+        plotToGNU(bzrc, agent)
 
 
