@@ -2,6 +2,8 @@ import sys, argparse, time
 from bzrc import BZRC, Command
 from time import sleep
 from math import pow, atan2, pi, cos, sin
+import numpy as np
+from copy import deepcopy as dc
 
 # --------------------------------- VARIABLES
 desc=''' Example:
@@ -162,11 +164,15 @@ class Agent(object):
                 t[obstacle]['angle'] = self.getTankAngle(tank, self.s_obstacles[obstacle]['x'], self.s_obstacles[obstacle]['y'])
                 t[obstacle]['r'] = self.s_obstacles[obstacle]['r']
 
-    def avoidObstacles(self):
+    def avoidObstacles(self, tangential=True):
         for tank in self.tanks:
             if tank.status == 'alive':
                 if tank.callsign in self.d_obstacles:
                     x_diff, y_diff = self.avoidObstacle(tank)
+                    if tangential:
+                        x, y = dc(x_diff, y_diff)
+                        x_diff += -y
+                        y_diff += x
                     self.move[tank.callsign][0] += x_diff
                     self.move[tank.callsign][1] += y_diff
 
@@ -190,6 +196,9 @@ class Agent(object):
             tank = self.getTankFromCallsign(callsign)
             self.moveToPosition(tank, tank.x+m[0], tank.y+m[1])
 
+    def followTangential(self):
+
+
 # --------------------------------- FUNCTIONS
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
@@ -205,6 +214,7 @@ def runTimer(bzrc, agent, log):
             agent.setObstacleInfo()
             agent.seekGoals()
             agent.avoidObstacles()
+            agent.followTangential()
             agent.moveTanks()
         except KeyboardInterrupt:
             print "Exiting due to keyboard interrupt."
