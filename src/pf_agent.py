@@ -121,7 +121,8 @@ class Agent(object):
         for tank in self.tanks:
             if tank.status == 'alive':
                 if tank.callsign in self.goals:
-                    self.move[tank.callsign] = {}
+                    if tank.callsign not in self.move:
+                        self.move[tank.callsign] = {}
                     self.move[tank.callsign]['attraction'] = list(self.seekGoal(tank))
 
     def seekGoal(self, tank):
@@ -153,6 +154,8 @@ class Agent(object):
         for tank in self.tanks:
             if tank.status == 'alive':
                 if tank.callsign in self.d_obstacles:
+                    if tank.callsign not in self.move:
+                        self.move[tank.callsign] = {}
                     self.move[tank.callsign]['repulsion'] = list(self.avoidObstacle(tank))
 
     def avoidObstacle(self, tank, tangential=True):
@@ -179,6 +182,8 @@ class Agent(object):
         for tank in self.tanks:
             if tank.status == 'alive':
                 if tank.callsign in self.move:
+                    if tank.callsign not in self.move:
+                        self.move[tank.callsign] = {}
                     self.move[tank.callsign]['tangential'] = list(self.getTangential(tank))
 
     def getTangential(self, tank):
