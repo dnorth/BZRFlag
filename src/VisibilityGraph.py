@@ -103,18 +103,31 @@ def VisibilityGraph(bzrc):
                     segDict[point.x, point.y].append(point1)
     return segDict
 
-
-def plotToGNU(startingPoint, visiblePoints):
+def plotAllToGNU(segDict):
     f = open('plot.gpi','w')
     f.write('set title "Potential Fields Plot\n')
     f.write('set xrange [-400.0: 400.0]\n')
     f.write('set yrange [-400.0: 400.0]\n')
-    f.write('unset key\n')
-    f.write('set size square\n')
-    for visiblePoint in visiblePoints:
-        f.write('set arrow from %s, %s to %s, %s lt 3\n' % (startingPoint.x, startingPoint.y, visiblePoint.x, visiblePoint.y))
+    f.write('unset key\n')    
+    for key, visiblePoints in segDict.items():
+        plotToGNU(Point(key[0], key[1]), visiblePoints, f)
     f.write('plot \'-\' with lines\n0 0 0 0\ne')
     f.close()
+
+
+def plotToGNU(startingPoint, visiblePoints, f=None):
+    if not f:
+        f = open('plot.gpi','w')
+        f.write('set title "Potential Fields Plot\n')
+        f.write('set xrange [-400.0: 400.0]\n')
+        f.write('set yrange [-400.0: 400.0]\n')
+        f.write('unset key\n')
+        f.write('set size square\n')
+    for visiblePoint in visiblePoints:
+        f.write('set arrow from %s, %s to %s, %s lt 3\n' % (startingPoint.x, startingPoint.y, visiblePoint.x, visiblePoint.y))
+    if not f:
+        f.write('plot \'-\' with lines\n0 0 0 0\ne')
+        f.close()
 
 def bfs(startPoint, endPoint, visDict):
     order = []
