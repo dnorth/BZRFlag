@@ -4,7 +4,7 @@ def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
     return bzrc
 
-bzrc = startRobot('localhost', 64159)
+bzrc = startRobot('localhost', 56327)
 
 class Point():
     def __init__(self, x, y):
@@ -104,6 +104,17 @@ def VisibilityGraph(bzrc):
     return segDict
 
 
+def plotToGNU(startingPoint, visiblePoints):
+    f = open('plot.gpi','w')
+    f.write('set title "Potential Fields Plot\n')
+    f.write('set xrange [-400.0: 400.0]\n')
+    f.write('set yrange [-400.0: 400.0]\n')
+    f.write('unset key\n')
+    f.write('set size square\n')
+    for visiblePoint in visiblePoints:
+        f.write('set arrow from %s, %s to %s, %s lt 3\n' % (startingPoint.x, startingPoint.y, visiblePoint.x, visiblePoint.y))
+    f.write('plot \'-\' with lines\n0 0 0 0\ne')
+    f.close()
 
 
 
