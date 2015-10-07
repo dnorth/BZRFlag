@@ -4,7 +4,7 @@ def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
     return bzrc
 
-bzrc = startRobot('localhost', 60960)
+bzrc = startRobot('localhost', 64159)
 
 class Point():
     def __init__(self, x, y):
@@ -14,9 +14,37 @@ class Point():
 class VisibilityLine():
     def __init__():
 
-def checkIntersection(p1, p2, p3, p4):
-    # proper intersection
-    
+def onSegment(p, q, r):
+    if (q.x <= max(p.x, r.x) and q.x >= min(p.x, r.x) and q.y <= max(p.y, r.y) and q.y >= min(p.y, r.y)):
+        return True
+    return False
+
+def orientation(p, q, r):
+    val = (q.y-p.y) * (r.x-q.x) - (q.x-p.x) * (r.y-q.y)
+    if val == 0:
+        return 0
+    elif val > 0:
+        return 1
+    else:
+        return 2
+
+def doesIntersect(p1, q1, p2, q2):
+    o1 = orientation(p1, q1, p2)
+    o2 = orientation(p1, q1, q2)
+    o3 = orientation(p2, q2, p1)
+    o4 = orientation(p2, q2, q1)
+    if o1 != o2 and o3 != o4:
+        return True
+    elif o1 == 0 and onSegment(p1, p2, q1):
+        return True
+    elif o2 == 0 and onSegment(p1, q2, q1):
+        return True
+    elif o3 == 0 and onSegment(p2, p1, q2):
+        return True
+    elif o4 == 0 and onSegment(p2, q1, q2):
+        return True
+    else:
+        return False
 
 def getPoints(step):
     points = []
@@ -25,6 +53,60 @@ def getPoints(step):
             points.append(Point(x, y))
     return points
 
+def getObstacles(bzrc):
+    l = bzrc.get_obstacles()
+    obstacles = []
+    for o in l:
+        oList = []
+        for vertex in o:
+            oList.append(Point(vertex[0], vertex[1]))
+        obstacles.append(oList)
+    return obstacles
+
+def insideObstacle(p, o):
+    o_x = [v.x for v in o]
+    o_y = [v.x for v in o]
+    if p.x <= max(o_x) and p.x >= min(o_x):
+        if p.y <= max(o_y) and p.y >= min(o_y):
+            return True
+    return False
+
+def checkAgainstObstacleEdges(p1, q1, o):
+    for x in range(len(o)):
+        p2 = o[x]
+        if x == len(o) - 1:
+            q2 = o[0]
+        else:
+            q2 = o[x+1]
+        if doesIntersect(p1, q1, p2, q2):
+            return True
+    return False
+
+def intersectsWithObstacle(p1, q1, obstacles):
+    for o in obstacles:
+        if insideObstacle(p1, o):
+            return True
+        elif checkAgainstObstacleEdges(p1, q1, o):
+            return True
+    return False
+
 def VisibilityGraph(bzrc):
     points = getPoints(20)
-    s = bzrc.get_obstacles()
+    obstacles = getObstacles(bzrc)
+    segDict = {}
+    for point in points:
+        for point1 in points:
+            if point != point1:
+                if not intersectsWithObstacle(point, point1, obstacles):
+                    if point not in segDict:
+                        segDict[point] = []
+                    segDict[point].append(point1)
+    return segDict
+
+
+
+
+
+
+
+
