@@ -91,14 +91,14 @@ def intersectsWithObstacle(p1, q1, obstacles):
     return False
 
 def VisibilityGraph(bzrc):
-    points = getPoints(20)
+    points = getPoints(40)
     obstacles = getObstacles(bzrc)
     segDict = {}
     for point in points:
         for point1 in points:
             if point != point1:
                 if not intersectsWithObstacle(point, point1, obstacles):
-                    if [point.x, point.y] not in segDict:
+                    if (point.x, point.y) not in segDict:
                         segDict[point.x, point.y] = []
                     segDict[point.x, point.y].append(point1)
     return segDict
