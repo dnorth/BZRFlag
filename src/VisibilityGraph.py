@@ -98,9 +98,9 @@ def VisibilityGraph(bzrc):
         for point1 in points:
             if point != point1:
                 if not intersectsWithObstacle(point, point1, obstacles):
-                    if point not in segDict:
-                        segDict[point] = []
-                    segDict[point].append(point1)
+                    if [point.x, point.y] not in segDict:
+                        segDict[point.x, point.y] = []
+                    segDict[point.x, point.y].append(point1)
     return segDict
 
 
@@ -116,7 +116,18 @@ def plotToGNU(startingPoint, visiblePoints):
     f.write('plot \'-\' with lines\n0 0 0 0\ne')
     f.close()
 
-
+def bfs(startPoint, endPoint, visDict):
+    order = []
+    q = Queue()
+    points = visDict.keys()
+    q.put(startPoint)
+    points.remove(startPoint)
+    while not q.empty():
+        point = q.get()
+        order.append(point)
+        remove_points = []
+        for point2 in points:
+            if 
 
 
 
