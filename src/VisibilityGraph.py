@@ -65,7 +65,7 @@ def getObstacles(bzrc):
 
 def insideObstacle(p, o):
     o_x = [v.x for v in o]
-    o_y = [v.x for v in o]
+    o_y = [v.y for v in o]
     if p.x <= max(o_x) and p.x >= min(o_x):
         if p.y <= max(o_y) and p.y >= min(o_y):
             return True
@@ -85,8 +85,10 @@ def checkAgainstObstacleEdges(p1, q1, o):
 def intersectsWithObstacle(p1, q1, obstacles):
     for o in obstacles:
         if insideObstacle(p1, o):
+            print "INSIDE OBSTACLE"
             return True
         elif checkAgainstObstacleEdges(p1, q1, o):
+            print "CROSSING OBSTACLE EDGE"
             return True
     return False
 
