@@ -95,8 +95,8 @@ def intersectsWithObstacle(p1, q1, obstacles):
             return True
     return False
 
-def VisibilityGraph(bzrc):
-    points = getPoints(40)
+def VisibilityGraph(bzrc, stepAmount=40):
+    points = getPoints(stepAmount)
     obstacles = getObstacles(bzrc)
     segDict = {}
     for point in points:
@@ -140,8 +140,7 @@ def bfs(startPoint, endPoint, visDict):
     queue.put(path)
     print "Starting"
     while not queue.empty():
-        print "Looping"
-        vertex = queue.get()
+        path = queue.get()
         last_node = path[-1]
         if last_node == endPoint:
             print "Last Node: x- %s y- %s is equal to End Point: x- %s y- %s" %(last_node.x, last_node.y, endPoint.x, endPoint.y)
@@ -151,6 +150,16 @@ def bfs(startPoint, endPoint, visDict):
                 visited.add(node)
                 queue.put(path + [node])
     print "Ending"
+
+def getBases(bzrc):
+    bases = {}
+    for base in bzrc.get_bases():
+        setattr(base, 'center', calcCenter(base))
+        bases[base.color] = base
+    return bases
+
+def calcCenter(base):
+    return (base.corner1_x + base.corner3_x) / 2 , (base.corner1_y + base.corner3_y) / 2
 
 #def bfs(startPoint, endPoint, visDict):
 #    order = []
