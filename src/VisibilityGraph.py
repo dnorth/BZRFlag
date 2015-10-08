@@ -1,4 +1,5 @@
 from bzrc import BZRC, Command
+import Queue
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
@@ -10,6 +11,10 @@ class Point():
     def __init__(self, x, y):
         self.x = x
         self.y = y
+    def __hash__(self):
+        return hash((self.x, self.y))
+    def __eq__(self, other):
+        return (self.x, self.y) == (other.x, other.y)
 
 class VisibilityLine():
     def __init__():
@@ -85,10 +90,8 @@ def checkAgainstObstacleEdges(p1, q1, o):
 def intersectsWithObstacle(p1, q1, obstacles):
     for o in obstacles:
         if insideObstacle(p1, o):
-            print "INSIDE OBSTACLE"
             return True
         elif checkAgainstObstacleEdges(p1, q1, o):
-            print "CROSSING OBSTACLE EDGE"
             return True
     return False
 
@@ -100,9 +103,9 @@ def VisibilityGraph(bzrc):
         for point1 in points:
             if point != point1:
                 if not intersectsWithObstacle(point, point1, obstacles):
-                    if (point.x, point.y) not in segDict:
-                        segDict[point.x, point.y] = []
-                    segDict[point.x, point.y].append(point1)
+                    if point not in segDict:
+                        segDict[point] = []
+                    segDict[point].append(point1)
     return segDict
 
 def plotAllToGNU(segDict):
@@ -112,7 +115,7 @@ def plotAllToGNU(segDict):
     f.write('set yrange [-400.0: 400.0]\n')
     f.write('unset key\n')    
     for key, visiblePoints in segDict.items():
-        plotToGNU(Point(key[0], key[1]), visiblePoints, f)
+        plotToGNU(key, visiblePoints, f)
     f.write('plot \'-\' with lines\n0 0 0 0\ne')
     f.close()
 
@@ -132,17 +135,35 @@ def plotToGNU(startingPoint, visiblePoints, f=None):
         f.close()
 
 def bfs(startPoint, endPoint, visDict):
-    order = []
-    q = Queue()
-    points = visDict.keys()
-    q.put(startPoint)
-    points.remove(startPoint)
-    while not q.empty():
-        point = q.get()
-        order.append(point)
-        remove_points = []
-        for point2 in points:
-            if 
+    visited, queue = set([startPoint]), Queue.Queue()
+    path = [startPoint]
+    queue.put(path)
+    print "Starting"
+    while not queue.empty():
+        print "Looping"
+        vertex = queue.get()
+        last_node = path[-1]
+        if last_node == endPoint:
+            print "Last Node: x- %s y- %s is equal to End Point: x- %s y- %s" %(last_node.x, last_node.y, endPoint.x, endPoint.y)
+            return path
+        for node in visDict[last_node]:
+            if node not in visited:
+                visited.add(node)
+                queue.put(path + [node])
+    print "Ending"
+
+#def bfs(startPoint, endPoint, visDict):
+#    order = []
+#    q = Queue()
+#    points = visDict.keys()
+#    q.put(startPoint)
+#    points.remove(startPoint)
+#    while not q.empty():
+#        point = q.get()
+#        order.append(point)
+#        remove_points = []
+#        for point2 in points:
+#            if 
 
 
 
