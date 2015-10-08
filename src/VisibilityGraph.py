@@ -6,6 +6,8 @@ def startRobot(hostname, socket):
     return bzrc
 
 bzrc = startRobot('localhost', 56327)
+bluebase = Point(bases['blue'].center[0], bases['blue'].center[1])
+redbase = Point(bases['red'].center[0], bases['red'].center[1])
 
 class Point():
     def __init__(self, x, y):
@@ -51,8 +53,12 @@ def doesIntersect(p1, q1, p2, q2):
     else:
         return False
 
-def getPoints(step):
+def getPoints(step, startPoint, endPoint):
     points = []
+    if startPoint:
+        points.append(startPoint)
+    if endPoint:
+        points.append(endPoint)
     for x in range(-400, 401, step):
         for y in range(-400, 401, step):
             points.append(Point(x, y))
@@ -95,8 +101,8 @@ def intersectsWithObstacle(p1, q1, obstacles):
             return True
     return False
 
-def VisibilityGraph(bzrc, stepAmount=40):
-    points = getPoints(stepAmount)
+def VisibilityGraph(bzrc, stepAmount=40, startPoint=None, endPoint=None):
+    points = getPoints(stepAmount, startPoint, endPoint)
     obstacles = getObstacles(bzrc)
     segDict = {}
     for point in points:
@@ -108,7 +114,7 @@ def VisibilityGraph(bzrc, stepAmount=40):
                     segDict[point].append(point1)
     return segDict
 
-def plotAllToGNU(segDict):
+def plotVisibilityGraphToGNU(segDict):
     f = open('plot.gpi','w')
     f.write('set title "Potential Fields Plot\n')
     f.write('set xrange [-400.0: 400.0]\n')
@@ -120,9 +126,9 @@ def plotAllToGNU(segDict):
     f.close()
 
 
-def plotToGNU(startingPoint, visiblePoints, f=None):
+def plotSingleVisibilityToGNU(startingPoint, visiblePoints, f=None):
     if not f:
-        f = open('plot.gpi','w')
+        f = open('visibile_plot.gpi','w')
         f.write('set title "Potential Fields Plot\n')
         f.write('set xrange [-400.0: 400.0]\n')
         f.write('set yrange [-400.0: 400.0]\n')
@@ -150,6 +156,21 @@ def bfs(startPoint, endPoint, visDict):
                 visited.add(node)
                 queue.put(path + [node])
     print "Ending"
+
+def plotPathToGNU(pointList):
+    f = open('path_plot.gpi','w')
+    f.write('set title "Potential Fields Plot\n')
+    f.write('set xrange [-400.0: 400.0]\n')
+    f.write('set yrange [-400.0: 400.0]\n')
+    f.write('unset key\n')
+    f.write('set size square\n')
+    for x in range(len(pointList)):
+        if x+1 != len(pointList): 
+            currPoint = pointList[x]
+            nextPoint = pointList[x+1]
+            f.write('set arrow from %s, %s to %s, %s lt 3\n' % (currPoint.x, currPoint.y, nextPoint.x, nextPoint.y))
+    f.write('plot \'-\' with lines\n0 0 0 0\ne')
+    f.close()
 
 def getBases(bzrc):
     bases = {}
