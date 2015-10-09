@@ -1,12 +1,13 @@
 from bzrc import BZRC, Command
 import Queue
-from math
+import math
+from time import sleep
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
     return bzrc
 
-bzrc = startRobot('localhost', 52710)
+bzrc = startRobot('localhost', 53488)
 
 class Point():
     def __init__(self, x, y):
@@ -172,7 +173,6 @@ def aStar(startPoint, endPoint, visDict):
     print "Starting"
     while not queue.empty():
         (cost, path) = queue.get()
-        print cost, path
         last_node = path[-1]
         if last_node == endPoint:
             print "Last Node: x- %s y- %s is equal to End Point: x- %s y- %s" %(last_node.x, last_node.y, endPoint.x, endPoint.y)
@@ -186,7 +186,8 @@ def aStar(startPoint, endPoint, visDict):
 
 def plotPathToGNU(pointList, title="Plot"):
     f = open('path_plot.gpi','w')
-    f.write('set title "{title}\n'.format(title=title))
+    cost = str(getDistanceSoFar(pointList))
+    f.write('set title "{title} (cost={cost})"\n'.format(title=title, cost=cost))
     f.write('set xrange [-400.0: 400.0]\n')
     f.write('set yrange [-400.0: 400.0]\n')
     f.write('unset key\n')
@@ -209,9 +210,35 @@ def getBases(bzrc):
         bases[base.color] = base
     return bases
 
+# def followPath(bzrc, tank, path):
+#     if getDistance(Point(tank.x, tank.y), path[0]) > 100:
+#         print "Tank is too far from startPoint"
+#         return
+    
+
+# def normalize_angle(self, angle):
+#     """Make any angle be between +/- pi."""
+#     angle -= 2 * pi * int (angle / (2 * pi))
+#     if angle <= -pi:
+#         angle += 2 * pi
+#     elif angle > pi:
+#         angle -= 2 * pi
+#     return angle
+
+# def moveToPosition(bzrc, tank, target_x, target_y):
+#     """Set command to move to given coordinates."""
+#     target_angle = atan2(target_y - tank.y,
+#                     target_x - tank.x)
+#     relative_angle = normalize_angle(target_angle - tank.angle)
+#     bzrc.do_commands([Command(tank.index, 1, 2 * relative_angle, True)])
+
 bases = getBases(bzrc)
 bluebase = Point(bases['blue'].center[0], bases['blue'].center[1])
 redbase = Point(bases['red'].center[0], bases['red'].center[1])
+
+visDict = VisibilityGraph(bzrc, startPoint=bluebase, endPoint=redbase)
+bfsPath = bfs(bluebase, redbase, visDict)
+aStarPath = aStar(bluebase, redbase, visDict)
 
 #def bfs(startPoint, endPoint, visDict):
 #    order = []
