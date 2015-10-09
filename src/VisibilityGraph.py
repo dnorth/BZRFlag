@@ -7,7 +7,7 @@ def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
     return bzrc
 
-bzrc = startRobot('localhost', 57669)
+bzrc = startRobot('localhost', 58096)
 
 class Point():
     def __init__(self, x, y):
@@ -230,6 +230,9 @@ def getBases(bzrc):
         bases[base.color] = base
     return bases
 
+def getTank(bzrc, index):
+    return bzrc.get_mytanks()[index]
+
 def followPath(bzrc, tank, path):
     if getDistance(Point(tank.x, tank.y), path[0]) > 100:
         print "Tank is too far from startPoint"
@@ -237,12 +240,15 @@ def followPath(bzrc, tank, path):
     i = 1
     while True:
         while True:
+            tank = getTank(bzrc, tank.index)
             if getDistance(path[i], Point(tank.x, tank.y)) <= 20:
                 break
             moveToPosition(bzrc, tank, path[i].x, path[i].y)
         i += 1
         if i >= len(path):
             break
+    bzrc.speed(tank.index, 0)
+    bzrc.angvel(tank.index, 0)
 
 def normalize_angle(angle):
     """Make any angle be between +/- pi."""
@@ -269,6 +275,8 @@ visDict = VisibilityGraph(bzrc, startPoint=bluebase, endPoint=redbase)
 bfsPath = bfs(bluebase, redbase, visDict)
 dfsPath = dfs(bluebase, redbase, visDict)
 aStarPath = aStar(bluebase, redbase, visDict)
+
+tanks = bzrc.get_mytanks()
 
 
 #def bfs(startPoint, endPoint, visDict):
