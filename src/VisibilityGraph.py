@@ -7,7 +7,7 @@ def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
     return bzrc
 
-bzrc = startRobot('localhost', 53488)
+bzrc = startRobot('localhost', 57669)
 
 class Point():
     def __init__(self, x, y):
@@ -184,6 +184,26 @@ def aStar(startPoint, endPoint, visDict):
                 queue.put((cost, path + [node]))
     print "Ending"
 
+def getNextPoint(path, visDict, currPoint, visited, endPoint):
+    potential_points = filter(lambda x : x not in visited, visDict[currPoint])
+    if len(potential_points) == 0:
+        return False
+    for point in potential_points:
+        if point == endPoint:
+            return path + [endPoint]
+        new_path = getNextPoint(path + [point], visDict, point, visited+[point], endPoint)
+        if new_path == False:
+            continue
+        if new_path:
+            if endPoint in new_path:
+                return new_path
+
+def dfs(startPoint, endPoint, visDict):
+    path = [startPoint]
+    visited = [startPoint]
+    path = getNextPoint(path, visDict, startPoint, visited, endPoint)
+    return path
+
 def plotPathToGNU(pointList, title="Plot"):
     f = open('path_plot.gpi','w')
     cost = str(getDistanceSoFar(pointList))
@@ -247,7 +267,9 @@ redbase = Point(bases['red'].center[0], bases['red'].center[1])
 
 visDict = VisibilityGraph(bzrc, startPoint=bluebase, endPoint=redbase)
 bfsPath = bfs(bluebase, redbase, visDict)
+dfsPath = dfs(bluebase, redbase, visDict)
 aStarPath = aStar(bluebase, redbase, visDict)
+
 
 #def bfs(startPoint, endPoint, visDict):
 #    order = []
