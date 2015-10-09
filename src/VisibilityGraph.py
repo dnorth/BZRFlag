@@ -210,27 +210,36 @@ def getBases(bzrc):
         bases[base.color] = base
     return bases
 
-# def followPath(bzrc, tank, path):
-#     if getDistance(Point(tank.x, tank.y), path[0]) > 100:
-#         print "Tank is too far from startPoint"
-#         return
-    
+def followPath(bzrc, tank, path):
+    if getDistance(Point(tank.x, tank.y), path[0]) > 100:
+        print "Tank is too far from startPoint"
+        return
+    i = 1
+    while True:
+        while True:
+            if getDistance(path[i], Point(tank.x, tank.y)) <= 20:
+                break
+            moveToPosition(bzrc, tank, path[i].x, path[i].y)
+        i += 1
+        if i >= len(path):
+            break
 
-# def normalize_angle(self, angle):
-#     """Make any angle be between +/- pi."""
-#     angle -= 2 * pi * int (angle / (2 * pi))
-#     if angle <= -pi:
-#         angle += 2 * pi
-#     elif angle > pi:
-#         angle -= 2 * pi
-#     return angle
+def normalize_angle(angle):
+    """Make any angle be between +/- pi."""
+    from math import pi
+    angle -= 2 * pi * int (angle / (2 * pi))
+    if angle <= -pi:
+        angle += 2 * pi
+    elif angle > pi:
+        angle -= 2 * pi
+    return angle
 
-# def moveToPosition(bzrc, tank, target_x, target_y):
-#     """Set command to move to given coordinates."""
-#     target_angle = atan2(target_y - tank.y,
-#                     target_x - tank.x)
-#     relative_angle = normalize_angle(target_angle - tank.angle)
-#     bzrc.do_commands([Command(tank.index, 1, 2 * relative_angle, True)])
+def moveToPosition(bzrc, tank, target_x, target_y):
+    """Set command to move to given coordinates."""
+    target_angle = math.atan2(target_y - tank.y,
+                    target_x - tank.x)
+    relative_angle = normalize_angle(target_angle - tank.angle)
+    bzrc.do_commands([Command(tank.index, 1, 2 * relative_angle, False)])
 
 bases = getBases(bzrc)
 bluebase = Point(bases['blue'].center[0], bases['blue'].center[1])
