@@ -1,5 +1,6 @@
 from bzrc import BZRC, Command
 import Queue
+from math import hypot
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
@@ -155,6 +156,26 @@ def bfs(startPoint, endPoint, visDict):
             if node not in visited:
                 visited.add(node)
                 queue.put(path + [node])
+    print "Ending"
+
+def getDistance(p1, p2):
+    return math.hypot(p2.x - p1.x, p2.y - p1.y)
+
+def aStar(startPoint, endPoint, visDict):
+    visited, queue = set([startPoint]), Queue.PriorityQueue()
+    path = [startPoint]
+    queue.put(getDistance(startPoint, endPoint), path)
+    print "Starting"
+    while not queue.empty():
+        cost, path = queue.get()
+        last_node = path[-1]
+        if last_node == endPoint:
+            print "Last Node: x- %s y- %s is equal to End Point: x- %s y- %s" %(last_node.x, last_node.y, endPoint.x, endPoint.y)
+            return path
+        for node in visDict[last_node]:
+            if node not in visited:
+                visited.add(node)
+                queue.put(cost + getDistance(node, endPoint), path + [node])
     print "Ending"
 
 def plotPathToGNU(pointList):
