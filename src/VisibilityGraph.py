@@ -6,9 +6,7 @@ def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
     return bzrc
 
-bzrc = startRobot('localhost', 56327)
-bluebase = Point(bases['blue'].center[0], bases['blue'].center[1])
-redbase = Point(bases['red'].center[0], bases['red'].center[1])
+bzrc = startRobot('localhost', 52710)
 
 class Point():
     def __init__(self, x, y):
@@ -200,6 +198,9 @@ def plotPathToGNU(pointList):
     f.write('plot \'-\' with lines\n0 0 0 0\ne')
     f.close()
 
+def calcCenter(base):
+    return (base.corner1_x + base.corner3_x) / 2 , (base.corner1_y + base.corner3_y) / 2
+
 def getBases(bzrc):
     bases = {}
     for base in bzrc.get_bases():
@@ -207,8 +208,9 @@ def getBases(bzrc):
         bases[base.color] = base
     return bases
 
-def calcCenter(base):
-    return (base.corner1_x + base.corner3_x) / 2 , (base.corner1_y + base.corner3_y) / 2
+bases = getBases(bzrc)
+bluebase = Point(bases['blue'].center[0], bases['blue'].center[1])
+redbase = Point(bases['red'].center[0], bases['red'].center[1])
 
 #def bfs(startPoint, endPoint, visDict):
 #    order = []
