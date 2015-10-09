@@ -161,6 +161,12 @@ def bfs(startPoint, endPoint, visDict):
 def getDistance(p1, p2):
     return math.hypot(p2.x - p1.x, p2.y - p1.y)
 
+def getDistanceSoFar(path):
+    distance = 0
+    for x in range(len(path)-1):
+        distance += getDistance(path[x], path[x+1])
+    return distance
+
 def aStar(startPoint, endPoint, visDict):
     visited, queue = set([startPoint]), Queue.PriorityQueue()
     path = [startPoint]
@@ -175,7 +181,8 @@ def aStar(startPoint, endPoint, visDict):
         for node in visDict[last_node]:
             if node not in visited:
                 visited.add(node)
-                queue.put(cost + getDistance(node, endPoint), path + [node])
+                cost = getDistanceSoFar(path + [node]) + getDistance(node, endPoint)
+                queue.put(cost, path + [node])
     print "Ending"
 
 def plotPathToGNU(pointList):
