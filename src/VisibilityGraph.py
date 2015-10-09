@@ -1,6 +1,6 @@
 from bzrc import BZRC, Command
 import Queue
-from math import hypot
+from math
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
@@ -168,10 +168,11 @@ def getDistanceSoFar(path):
 def aStar(startPoint, endPoint, visDict):
     visited, queue = set([startPoint]), Queue.PriorityQueue()
     path = [startPoint]
-    queue.put(getDistance(startPoint, endPoint), path)
+    queue.put((getDistance(startPoint, endPoint), path))
     print "Starting"
     while not queue.empty():
-        cost, path = queue.get()
+        (cost, path) = queue.get()
+        print cost, path
         last_node = path[-1]
         if last_node == endPoint:
             print "Last Node: x- %s y- %s is equal to End Point: x- %s y- %s" %(last_node.x, last_node.y, endPoint.x, endPoint.y)
@@ -180,12 +181,12 @@ def aStar(startPoint, endPoint, visDict):
             if node not in visited:
                 visited.add(node)
                 cost = getDistanceSoFar(path + [node]) + getDistance(node, endPoint)
-                queue.put(cost, path + [node])
+                queue.put((cost, path + [node]))
     print "Ending"
 
-def plotPathToGNU(pointList):
+def plotPathToGNU(pointList, title="Plot"):
     f = open('path_plot.gpi','w')
-    f.write('set title "Potential Fields Plot\n')
+    f.write('set title "{title}\n'.format(title=title))
     f.write('set xrange [-400.0: 400.0]\n')
     f.write('set yrange [-400.0: 400.0]\n')
     f.write('unset key\n')
