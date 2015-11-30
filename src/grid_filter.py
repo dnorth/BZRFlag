@@ -1,6 +1,5 @@
 from bzrc import BZRC, Command
-import Queue
-import math
+import Queue, argparse, math, numpy
 from time import sleep
 import OpenGL
 OpenGL.ERROR_CHECKING = False
@@ -11,6 +10,10 @@ from numpy import zeros
 
 WIDTH = 400
 HEIGHT = 400
+
+desc=''' Example:
+    python grid_filter.py -p localhost -s 57413
+    '''
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
@@ -36,7 +39,9 @@ def update_grid(new_grid):
 def update_local_grid(local_grid, position):
     x = position[0]+WIDTH
     y = position[1]+HEIGHT
-    grid[x:x+100,y:y+100] = local_grid
+    x_len = len(local_grid[0])
+    y_len = len(local_grid)
+    grid[y:y+y_len,x:x+x_len] = local_grid
 
 def init_window(width, height):
     global window
@@ -60,26 +65,27 @@ class Agent(object):
         self.commands = []
         self.time_diff = 0
         self.stop = False
-        self.bases = self.getBases()
-        self.color = self.getMyColor()
+        # self.bases = self.getBases()
+        # self.color = self.getMyColor()
         self.move = {}
     def read(self):
-        for tank in filter(lambda x : x.status == 'alive', self.tanks):
+        for tank in filter(lambda x : x.status == 'alive' and x.index == 0, self.tanks):
             position, local_grid = self.bzrc.get_occgrid(tank.index)
             rot_grid = numpy.rot90(local_grid)
             update_local_grid(rot_grid, position)
-
     def update(self):
         self.tanks = self.bzrc.get_mytanks()
+    # def move(self):
+        # for tank in 
 
 def runTimer(bzrc, agent, log=False):
-    start_time = time.time()
+    # start_time = time.time()
     init_window(WIDTH*2,HEIGHT*2)
     while True:
         try:
             agent.update()
             agent.read()
-            agent.move()
+            # agent.move()
             draw_grid()
         except KeyboardInterrupt:
             print "Exiting due to keyboard interrupt."
