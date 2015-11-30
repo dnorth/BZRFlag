@@ -11,9 +11,9 @@ from itertools import izip
 
 WIDTH = 400
 HEIGHT = 400
-THRESHOLD = 0.95
+THRESHOLD = 0.67
 likelihood = {}
-prior = {0:0.95, 1:0.05}
+prior = {0:0.05, 1:0.95}
 
 desc=''' Example:
     python grid_filter.py -p localhost -s 57413
@@ -48,9 +48,8 @@ def bayes(o, s):
     # print "likelihood is: " + str(l)
     p = prior[s]
     # print "prior is: " + str(p)
-    # print "THE NUMBER: " + str((l*p)/normalizer(o))
     if (l*p)/normalizer(o) >= THRESHOLD:
-        # print "1 dude"
+        #print "THE NUMBER: " + str((l*p)/normalizer(o))
         return 1
     else:
         # print "0 face"
