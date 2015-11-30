@@ -117,24 +117,23 @@ class Agent(object):
     def update(self):
         self.tanks = self.bzrc.get_mytanks()
     def move(self):
-        if not self.moving:
-            self.moving = True
-            for tank in filter(lambda x : x.status == 'alive', self.tanks):
-                self.bzrc.speed(tank.index, 10)
-                self.bzrc.angvel(tank.index, 0.2)
+        for tank in filter(lambda x : x.status == 'alive', self.tanks):
+            self.commands.append(Command(tank.index, 10, 0.2, False))
+        self.bzrc.do_commands(self.commands)
+        self.commands = []
 
 def runTimer(bzrc, agent, log=False):
     # start_time = time.time()
     init_window(WIDTH*2,HEIGHT*2)
     while True:
         try:
-            print "update"
+            # print "update"
             agent.update()
-            print "read"
+            # print "read"
             agent.read()
-            print "move"
+            # print "move"
             agent.move()
-            print "draw"
+            # print "draw"
             draw_grid()
         except KeyboardInterrupt:
             print "Exiting due to keyboard interrupt."
