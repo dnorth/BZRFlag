@@ -12,7 +12,7 @@ WIDTH = 400
 HEIGHT = 400
 THRESHOLD = 0.75
 likelihood = {}
-prior = {1:0.875, 0:0.125}
+prior = {0:0.95, 1:0.05}
 
 desc=''' Example:
     python grid_filter.py -p localhost -s 57413
@@ -97,13 +97,13 @@ class Agent(object):
         self.stop = False
         self.constants = self.bzrc.get_constants()
         likelihood[1,1] = float(self.constants['truepositive']) #truepositive
-        likelihood[1,0] = 1 - likelihood[1,1] #falsepositive
+        likelihood[0,1] = 1 - float(self.constants['truenegative']) #falsenegative
         likelihood[0,0] = float(self.constants['truenegative']) #truenegative
-        likelihood[0,1] = 1 - likelihood[0,0] #falsenegative
+        likelihood[1,0] = 1 - float(self.constants['truepositive']) #falsepositive
     def read(self):
         for tank in filter(lambda x : x.status == 'alive' and x.index == 0, self.tanks):
             position, local_grid = self.bzrc.get_occgrid(tank.index)
-            rot_grid = numpy.rot90(local_grid, 3)
+            rot_grid = numpy.fliplr(numpy.rot90(local_grid, 3))
             bayes_grid = get_bayes_grid(rot_grid, position)
             update_local_grid(bayes_grid, position)
     def update(self):
