@@ -7,6 +7,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from numpy import zeros
+from itertools import izip
 
 WIDTH = 400
 HEIGHT = 400
@@ -61,10 +62,16 @@ def get_bayes_grid(local_grid, position):
     x_len = len(local_grid[0])
     y_len = len(local_grid)
     spec_grid = grid[y:y+y_len,x:x+x_len]
-    for x in range(0, len(local_grid)):
-        for y in range(0, len(local_grid[0])):
-            spec_grid[x][y] = bayes(local_grid[x][y], spec_grid[x][y])
-    return spec_grid
+    # for x in range(0, len(local_grid)):
+    #     for y in range(0, len(local_grid[0])):
+    #         spec_grid[x][y] = bayes(local_grid[x][y], spec_grid[x][y])
+    new_grid = []
+    for a_row, b_row in izip(spec_grid, local_grid):
+        new_row = []
+        for a_item, b_item in izip(a_row, b_row):
+            new_row.append(bayes(a_item, b_item))
+        new_grid.append(new_row)
+    return new_grid
 
 def update_local_grid(local_grid, position):
     x = position[0]+WIDTH
@@ -100,6 +107,7 @@ class Agent(object):
         likelihood[0,1] = 1 - float(self.constants['truenegative']) #falsenegative
         likelihood[0,0] = float(self.constants['truenegative']) #truenegative
         likelihood[1,0] = 1 - float(self.constants['truepositive']) #falsepositive
+        self.moving = False
     def read(self):
         for tank in filter(lambda x : x.status == 'alive', self.tanks):
             position, local_grid = self.bzrc.get_occgrid(tank.index)
@@ -109,18 +117,24 @@ class Agent(object):
     def update(self):
         self.tanks = self.bzrc.get_mytanks()
     def move(self):
-        for tank in filter(lambda x : x.status == 'alive', self.tanks):
-            self.bzrc.speed(tank.index, 10)
-            self.bzrc.angvel(tank.index, 0.2)
+        if not self.moving:
+            self.moving = True
+            for tank in filter(lambda x : x.status == 'alive', self.tanks):
+                self.bzrc.speed(tank.index, 10)
+                self.bzrc.angvel(tank.index, 0.2)
 
 def runTimer(bzrc, agent, log=False):
     # start_time = time.time()
     init_window(WIDTH*2,HEIGHT*2)
     while True:
         try:
+            print "update"
             agent.update()
+            print "read"
             agent.read()
+            print "move"
             agent.move()
+            print "draw"
             draw_grid()
         except KeyboardInterrupt:
             print "Exiting due to keyboard interrupt."
