@@ -10,7 +10,7 @@ from numpy import zeros
 
 WIDTH = 400
 HEIGHT = 400
-THRESHOLD = 0.75
+THRESHOLD = 0.95
 likelihood = {}
 prior = {0:0.95, 1:0.05}
 
@@ -47,7 +47,7 @@ def bayes(o, s):
     # print "likelihood is: " + str(l)
     p = prior[s]
     # print "prior is: " + str(p)
-    print "THE NUMBER: " + str((l*p)/normalizer(o))
+    # print "THE NUMBER: " + str((l*p)/normalizer(o))
     if (l*p)/normalizer(o) >= THRESHOLD:
         # print "1 dude"
         return 1
@@ -101,7 +101,7 @@ class Agent(object):
         likelihood[0,0] = float(self.constants['truenegative']) #truenegative
         likelihood[1,0] = 1 - float(self.constants['truepositive']) #falsepositive
     def read(self):
-        for tank in filter(lambda x : x.status == 'alive' and x.index == 0, self.tanks):
+        for tank in filter(lambda x : x.status == 'alive', self.tanks):
             position, local_grid = self.bzrc.get_occgrid(tank.index)
             rot_grid = numpy.fliplr(numpy.rot90(local_grid, 3))
             bayes_grid = get_bayes_grid(rot_grid, position)
@@ -109,7 +109,7 @@ class Agent(object):
     def update(self):
         self.tanks = self.bzrc.get_mytanks()
     def move(self):
-        for tank in filter(lambda x : x.status == 'alive' and x.index == 0, self.tanks):
+        for tank in filter(lambda x : x.status == 'alive', self.tanks):
             self.bzrc.speed(tank.index, 10)
             self.bzrc.angvel(tank.index, 0.2)
 
