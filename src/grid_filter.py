@@ -8,6 +8,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from numpy import zeros
 from itertools import izip
+from random import shuffle
 
 WIDTH = 400
 HEIGHT = 400
@@ -22,13 +23,15 @@ class Point():
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.visited = False
+        # self.visited = False
     def __hash__(self):
         return hash((self.x, self.y))
     def __eq__(self, other):
         if not isinstance(other, Point):
+            # print "I DID FALSE!"
             return False
         else:
+            # print "I DID TRUE!"
             return (self.x, self.y) == (other.x, other.y)
 
 desc=''' Example:
@@ -99,6 +102,7 @@ class Agent(object):
     def __init__(self, bzrc, possibleGoals):
         self.bzrc = bzrc
         self.possibleGoals = possibleGoals
+        shuffle(self.possibleGoals)
         self.tanks = self.bzrc.get_mytanks()
         self.commands = []
         self.time_diff = 0
@@ -109,6 +113,7 @@ class Agent(object):
         likelihood['falsenegative'] = 1 - float(self.constants['truenegative']) #falsenegative
         likelihood['truenegative'] = float(self.constants['truenegative']) #truenegative
         likelihood['falsepositive'] = 1 - float(self.constants['truepositive']) #falsepositive
+        self.visited = []
         self.moving = False
     def read(self):
         for tank in filter(lambda x : x.status == 'alive', self.tanks):
@@ -121,34 +126,45 @@ class Agent(object):
         for tank in filter(lambda x : x.status == 'alive', self.tanks):
             g = self.goals[tank.callsign]
             if(g == "Done"):
-                elf.commands.append(Command(tank.index, 0, 0, False))
+                self.commands.append(Command(tank.index, 0, 0, False))
                 self.bzrc.do_commands(self.commands)
                 self.commands = []
             elif(g == None):
-                print "uh oh"
+                # print "uh oh"
                 pass
             else:
+                tank = self.bzrc.get_mytanks()[tank.index]
                 moveToPosition(self.bzrc, tank, g.x, g.y) 
     def setGoalInfo(self):
         for tank in filter(lambda x : x.status == 'alive', self.tanks):
             if tank.callsign not in self.goals:
                 self.goals[tank.callsign] = None
             g = self.goals[tank.callsign]
+            # if g and g.visited == True:
+            #     g = None
             if g == None:
-                self.goals[tank.callsign] = safe_list_get([x for x in self.possibleGoals if x.visited == False and x not in self.goals.values()], 0)
-                if isinstance(self.goals[tank.callsign], Point):
-                    print "New goal: X:" + str(self.goals[tank.callsign].y) + " Y: " + str(self.goals[tank.callsign].y)
-                else:
-                    print "No More Goals."
+                self.goals[tank.callsign] = safe_list_get(filter(lambda x : not inList(x, self.visited) and x not in self.goals.values(), self.possibleGoals), 0)
+                # if isinstance(self.goals[tank.callsign], Point):
+                    # print "New goal: X:" + str(self.goals[tank.callsign].x) + " Y: " + str(self.goals[tank.callsign].y)
+                # else:
+                    # print "No More Goals."
             elif g == "Done":
                 continue
             elif getDistance(g, Point(tank.x, tank.y)) <= 50:
-                print "I'm by my goal!"
-                print self.possibleGoals[self.possibleGoals.index(self.goals[tank.callsign])].visited
-                self.possibleGoals[self.possibleGoals.index(self.goals[tank.callsign])].visited = True
+                # print "I'm by my goal!"
+                # print self.possibleGoals[self.possibleGoals.index(self.goals[tank.callsign])].visited
+                # self.possibleGoals[self.possibleGoals.index(g)].visited = True
+                self.visited.append(g)
+                # print self.visited
+                # pg = self.possibleGoals[self.possibleGoals.index(g)]
+                # pg.visited = True
+                # self.possibleGoals[self.possibleGoals.index(g)] = pg
                 self.goals[tank.callsign] = None
-def getDistance(p1, p2):
-    return math.hypot(p2.x - p1.x, p2.y - p1.y)
+def getDistance(p0, p1):
+    return math.sqrt((p0.x - p1.x)**2 + (p0.y - p1.y)**2)
+
+def inList(o, l):
+    return len(filter(lambda x : x == o, l)) > 0
 
 def safe_list_get (l, idx):
   try:
