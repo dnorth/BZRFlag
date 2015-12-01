@@ -15,7 +15,7 @@ THRESHOLD = 0.9
 likelihood = {}
 # prior = {1:0.5, 0:0.5}
 prior = numpy.empty([800,800])
-prior.fill(0.8)
+prior.fill(0.5)
 
 desc=''' Example:
     python grid_filter.py -p localhost -s 57413
@@ -53,15 +53,13 @@ def bayes(o, x, y):
     # print "likelihood is: " + str(l)
     if o == 1:
         bel_occ = likelihood['truepositive'] * prior[x][y]
-        bel_unocc =  likelihood['falsepositive'] * (1-prior[x][y])
+        bel_unocc =  likelihood['falsenegative'] * (1-prior[x][y])
     else:
-        bel_occ = likelihood['falsenegative'] * prior[x][y]
+        bel_occ = likelihood['falsepositive'] * prior[x][y]
         bel_unocc =  likelihood['truenegative'] * (1-prior[x][y])
     # print "THE NUMBER: " + str((l*p)/normalizer(o))
 
     posterior = (bel_occ)/(bel_occ + bel_unocc)
-    print "posterior is: " + str(posterior)
-
     # if posterior < 0.001:
     #     posterior = 0
 
@@ -125,7 +123,7 @@ class Agent(object):
     def read(self):
         for tank in filter(lambda x : x.status == 'alive', self.tanks):
             position, local_grid = self.bzrc.get_occgrid(tank.index)
-            rot_grid = numpy.fliplr(numpy.rot90(local_grid, 3))
+            rot_grid = local_grid    # ROTATE?!  numpy.fliplr(numpy.rot90(local_grid, 3))
             bayes_grid = get_bayes_grid(rot_grid, position)
             update_grid()
     def update(self):
