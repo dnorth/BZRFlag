@@ -17,16 +17,36 @@ likelihood = {}
 prior = numpy.empty([800,800])
 prior.fill(0.5)
 
+
+class Point():
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.visited = False
+    def __hash__(self):
+        return hash((self.x, self.y))
+    def __eq__(self, other):
+        if not isinstance(other, Point):
+            return False
+        else:
+            return (self.x, self.y) == (other.x, other.y)
+
 desc=''' Example:
     python grid_filter.py -p localhost -s 57413
     '''
 
+def getPossibleGoals(step):
+    possibleGoals = []
+    for x in range(-400, 401, step):
+        for y in range(-400, 401, step):
+            possibleGoals.append(Point(x, y))
+    return possibleGoals
+
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
-    agent = Agent(bzrc)
+    possibleGoals = getPossibleGoals(50)
+    agent = Agent(bzrc, possibleGoals)
     return bzrc, agent
-
-# bzrc = startRobot('localhost', 50719)
 
 grid = None
 
@@ -42,55 +62,23 @@ def update_grid():
     global grid
     grid = prior
 
-# def normalizer(o, x, y):
-#     if o == 1:
-#         return likelihood['truepositive']*prior[x][y] + likelihood['falsepositive']*(1-prior[x][y])
-#     else:
-#         return likelihood['falsenegative']*prior[x][y] + likelihood['truenegative']*(1-prior[x][y])
-
 def bayes(o, x, y):
-    # l = likelihood[o,thresh(s)]
-    # print "likelihood is: " + str(l)
     if o == 1:
         bel_occ = likelihood['truepositive'] * prior[x][y]
         bel_unocc =  likelihood['falsenegative'] * (1-prior[x][y])
     else:
         bel_occ = likelihood['falsepositive'] * prior[x][y]
         bel_unocc =  likelihood['truenegative'] * (1-prior[x][y])
-    # print "THE NUMBER: " + str((l*p)/normalizer(o))
 
     posterior = (bel_occ)/(bel_occ + bel_unocc)
-    # if posterior < 0.001:
-    #     posterior = 0
-
     prior[x][y] = posterior
-
-    # return prior[x][y]
 
 def get_bayes_grid(local_grid, position):
     x_pos = position[0]+WIDTH
     y_pos = position[1]+HEIGHT
-    # x_len = len(local_grid[0])
-    # y_len = len(local_grid)
-    # spec_grid = grid[y_pos:y_pos+y_len,x_pos:x_pos+x_len]
     for x in range(0, len(local_grid)):
         for y in range(0, len(local_grid[0])):
-            bayes(local_grid[x][y], x+x_pos, y+y_pos)
-    # return spec_grid
-    # new_grid = []
-    # for a_row, b_row in izip(local_grid, spec_grid):
-    #     new_row = []
-    #     for a_item, b_item in izip(a_row, b_row):
-    #         new_row.append(bayes(a_item, b_item))
-    #     new_grid.append(new_row)
-    # return new_grid
-
-# def update_local_grid(local_grid, position):
-#     x = position[0]+WIDTH
-#     y = position[1]+HEIGHT
-#     x_len = len(local_grid[0])
-#     y_len = len(local_grid)
-#     grid[y:y+y_len,x:x+x_len] = local_grid
+            bayes(local_grid[x][y], y+y_pos, x+x_pos) #y is opposite of what we expect
 
 def init_window(width, height):
     global window
@@ -108,13 +96,15 @@ def init_window(width, height):
     glLoadIdentity()
 
 class Agent(object):
-    def __init__(self, bzrc):
+    def __init__(self, bzrc, possibleGoals):
         self.bzrc = bzrc
+        self.possibleGoals = possibleGoals
         self.tanks = self.bzrc.get_mytanks()
         self.commands = []
         self.time_diff = 0
         self.stop = False
         self.constants = self.bzrc.get_constants()
+        self.goals = {}
         likelihood['truepositive'] = float(self.constants['truepositive']) #truepositive
         likelihood['falsenegative'] = 1 - float(self.constants['truenegative']) #falsenegative
         likelihood['truenegative'] = float(self.constants['truenegative']) #truenegative
@@ -123,35 +113,81 @@ class Agent(object):
     def read(self):
         for tank in filter(lambda x : x.status == 'alive', self.tanks):
             position, local_grid = self.bzrc.get_occgrid(tank.index)
-            rot_grid = local_grid    # ROTATE?!  numpy.fliplr(numpy.rot90(local_grid, 3))
-            bayes_grid = get_bayes_grid(rot_grid, position)
+            bayes_grid = get_bayes_grid(local_grid, position)
             update_grid()
     def update(self):
         self.tanks = self.bzrc.get_mytanks()
     def move(self):
         for tank in filter(lambda x : x.status == 'alive', self.tanks):
-            self.commands.append(Command(tank.index, 10, 0.2, False))
-        self.bzrc.do_commands(self.commands)
-        self.commands = []
+            g = self.goals[tank.callsign]
+            if(g == "Done"):
+                elf.commands.append(Command(tank.index, 0, 0, False))
+                self.bzrc.do_commands(self.commands)
+                self.commands = []
+            elif(g == None):
+                print "uh oh"
+                pass
+            else:
+                moveToPosition(self.bzrc, tank, g.x, g.y) 
+    def setGoalInfo(self):
+        for tank in filter(lambda x : x.status == 'alive', self.tanks):
+            if tank.callsign not in self.goals:
+                self.goals[tank.callsign] = None
+            g = self.goals[tank.callsign]
+            if g == None:
+                self.goals[tank.callsign] = safe_list_get([x for x in self.possibleGoals if x.visited == False and x not in self.goals.values()], 0)
+                if isinstance(self.goals[tank.callsign], Point):
+                    print "New goal: X:" + str(self.goals[tank.callsign].y) + " Y: " + str(self.goals[tank.callsign].y)
+                else:
+                    print "No More Goals."
+            elif g == "Done":
+                continue
+            elif getDistance(g, Point(tank.x, tank.y)) <= 50:
+                print "I'm by my goal!"
+                print self.possibleGoals[self.possibleGoals.index(self.goals[tank.callsign])].visited
+                self.possibleGoals[self.possibleGoals.index(self.goals[tank.callsign])].visited = True
+                self.goals[tank.callsign] = None
+def getDistance(p1, p2):
+    return math.hypot(p2.x - p1.x, p2.y - p1.y)
+
+def safe_list_get (l, idx):
+  try:
+    return l[idx]
+  except IndexError:
+    return "Done"
 
 def runTimer(bzrc, agent, log=False):
     # start_time = time.time()
     init_window(WIDTH*2,HEIGHT*2)
     while True:
         try:
-            # print "update"
             agent.update()
-            # print "read"
             agent.read()
-            # print "move"
+            agent.setGoalInfo()
             agent.move()
-            # print "draw"
             draw_grid()
         except KeyboardInterrupt:
             print "Exiting due to keyboard interrupt."
             agent.stop = True
             bzrc.close()
             return
+
+def normalize_angle(angle):
+    """Make any angle be between +/- pi."""
+    from math import pi
+    angle -= 2 * pi * int (angle / (2 * pi))
+    if angle <= -pi:
+        angle += 2 * pi
+    elif angle > pi:
+        angle -= 2 * pi
+    return angle
+
+def moveToPosition(bzrc, tank, target_x, target_y):
+    """Set command to move to given coordinates."""
+    target_angle = math.atan2(target_y - tank.y,
+                    target_x - tank.x)
+    relative_angle = normalize_angle(target_angle - tank.angle)
+    bzrc.do_commands([Command(tank.index, 1, 2 * relative_angle, False)])
 
 def readCommandLine():
     parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
