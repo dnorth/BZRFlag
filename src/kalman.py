@@ -56,6 +56,10 @@ Sz = numpy.array([
 
 St = numpy.ones(len(Sx))
 
+mu = [[1],[0],[0],[1],[0],[0]]
+
+z = [[0],[0]]
+
 # ---------- Agent
 
 class Agent(object):
@@ -85,8 +89,17 @@ class Agent(object):
 
 def calculateKalmanGain():
     part1 = dot(dot(F, St) , Ft) + Sx
-    kT = dot(dot(part1, Ht), pow(dot(dot(H, part1),  Ht) + Sz, -1))
-    return kT
+    Kt = dot(dot(part1, Ht), pow(dot(dot(H, part1),  Ht) + Sz, -1))
+    return Kt
+
+#z represents observed state? [[x], [y]]?
+def calculateNewMu(mu, Kt, z):
+    mu = dot(F, mu) + dot( Kt,(z - dot(dot(H, F), mu)))
+    return mu
+
+def calculateSigmaT(Kt, St):
+    St = dot( I - dot(Kt, H), dot(dot(F, St), Ft) + Sx)
+    return St
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
