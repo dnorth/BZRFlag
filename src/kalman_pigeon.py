@@ -4,70 +4,8 @@ from numpy import dot
 from random import randint
 
 desc=''' Example:
-    python kalman.py -p localhost -s 57413
+    python kalman.py -p localhost -s 57413 -t [1, 2, 3]
     '''
-
-# ---------- Constants
-
-dt = 0.5
-c = 0
-
-I = numpy.array([
-    [1, 0, 0, 0, 0, 0],
-    [0, 1, 0, 0, 0, 0],
-    [0, 0, 1, 0, 0, 0],
-    [0, 0, 0, 1, 0, 0],
-    [0, 0, 0, 0, 1, 0],
-    [0, 0, 0, 0, 0, 1]
-    ])
-
-F = numpy.array([
-    [1, dt, (dt*dt)/2, 0, 0, 0],
-    [0, 1, dt, 0, 0, 0],
-    [0, -c, 1, 0, 0, 0],
-    [0, 0, 0, 1, dt, (dt*dt)/2],
-    [0, 0, 0, 0, 1, dt],
-    [0, 0, 0, 0, -c, 1]
-    ])
-
-Ft = numpy.transpose(F)
-
-Sx = numpy.array([
-    [0.1, 0, 0, 0, 0, 0],
-    [0, 0.1, 0, 0, 0, 0],
-    [0, 0, 100, 0, 0, 0],
-    [0, 0, 0, 0.1, 0, 0],
-    [0, 0, 0, 0, 0.1, 0],
-    [0, 0, 0, 0, 0, 100]
-    ])
-
-H = numpy.array([
-    [1, 0, 0, 0, 0, 0],
-    [0, 0, 0, 1, 0, 0]
-    ])
-
-Ht = numpy.transpose(H)
-
-sd = 5
-
-Sz = numpy.array([
-    [sd*sd, 0],
-    [0, sd*sd]
-    ])
-
-St = numpy.ones(len(Sx))
-
-mu = [[1],[0],[0],[1],[0],[0]]
-
-z = [[0],[0]]
-
-# ---------- Variables
-
-Xt = numpy.array([
-    []
-    ])
-
-# ---------- Classes
 
 class Point():
     def __init__(self, x, y):
@@ -93,48 +31,26 @@ class Agent(object):
         self.is_running = False
     def update(self):
         self.tank = self.bzrc.get_mytanks()[0]
-    def _run(self):
+    def type1(self):
+        # basically do nothing
         self.is_running = False
-        self.start()
-        self.update()
-        self.evalAndMove()
-    def start(self):
-        if not self.is_running:
-            self._timer = threading.Timer(dt, self._run)
-            self._timer.start()
-            self.is_running = True
-    def stop(self):
-        if hasattr(self, '_timer'):
-            self._timer.cancel()
-        self.is_running = False
-    def getXt(self):
-        self.update()
-        return numpy.array([
-                [self.tank.x],
-                [0],
-                [0],
-                [self.tank.y],
-                [0],
-                [0]
-                ])
+    def type2(self):
+        # constant x and y
+        enemy = self.bzrc.get_othertanks()[0]
+        randPoint = getRandomPoint(int(enemy.x), int(enemy.y))
+        x = 0
+        while True:
+            self.update()
+            turnToPosition(self.bzrc, self.tank, randPoint.x, randPoint.y)
+            if facingAngle(self.tank, randPoint.x, randPoint.y):
+                x += 1
+            else:
+                x = 0
+            if x > 100:
+                break
+        self.bzrc.angvel(self.tank.index, 0)
+        self.bzrc.speed(self.tank.index, 1)
     # def evalAndMove(self):
-
-    
-# ---------- Functions
-
-def calculateKalmanGain():
-    part1 = dot(dot(F, St) , Ft) + Sx
-    Kt = dot(dot(part1, Ht), pow(dot(dot(H, part1),  Ht) + Sz, -1))
-    return Kt
-
-#z represents observed state? [[x], [y]]?
-def calculateNewMu(mu, Kt, z):
-    mu = dot(F, mu) + dot( Kt,(z - dot(dot(H, F), mu)))
-    return mu
-
-def calculateSigmaT(Kt, St):
-    St = dot( I - dot(Kt, H), dot(dot(F, St), Ft) + Sx)
-    return St
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
@@ -151,18 +67,11 @@ def normalize_angle(angle):
         angle -= 2 * pi
     return angle
 
-def moveToPosition(bzrc, tank, target_x, target_y):
-    """Set command to move to given coordinates."""
-    target_angle = math.atan2(target_y - tank.y,
-                    target_x - tank.x)
-    relative_angle = normalize_angle(target_angle - tank.angle)
-    bzrc.do_commands([Command(tank.index, 1, 2 * relative_angle, False)])
-
 def facingAngle(tank, target_x, target_y):
     target_angle = math.atan2(target_y - tank.y,
                     target_x - tank.x)
     relative_angle = normalize_angle(target_angle - tank.angle)
-    return relative_angle < 0.1
+    return relative_angle < 0.5
 
 def turnToPosition(bzrc, tank, target_x, target_y):
     """Set command to move to given coordinates."""
@@ -182,11 +91,6 @@ def getRandomPoint(target_x, target_y):
         y = randint(target_y-300, target_x+300)
         if getDistance(Point(x, y), Point(target_x, target_y)) <= 325:
             return Point(x, y)
-
-def runTimer(bzrc, agent, type, log=False):
-    
-
-# ---------- main
 
 def readCommandLine():
     parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -209,4 +113,12 @@ if __name__ == '__main__':
     else:
         log = False
     bzrc, agent = startRobot(hostname, socket)
-    runTimer(bzrc, agent, args.type, log)
+    if args.type == '1':
+        agent.type1()
+    elif args.type == '2':
+        agent.type2()
+    elif args.type == '3':
+        agent.type3()
+    else:
+        print desc
+        raise
