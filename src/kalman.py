@@ -10,7 +10,7 @@ desc=''' Example:
 
 # ---------- Constants
 
-dt = 0.1
+dt = 0.01
 c = 0
 
 I = numpy.matrix([
@@ -112,9 +112,9 @@ class Agent(object):
         cv2.imshow("World", self.world)
         cv2.waitKey(1)
     def getPlotX(self, x):
-        return x + 400
+        return numpy.clip(x + 400, 0, 800) 
     def getPlotY(self, y):
-        return 400 - y
+        return numpy.clip(400 - y, 0, 800)
     
 # ---------- Functions
 
