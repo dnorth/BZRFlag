@@ -1,7 +1,8 @@
 from bzrc import BZRC, Command
-import math, numpy, argparse
+import math, numpy, argparse, time
 from numpy import dot
 from random import randint
+import cv2
 
 desc=''' Example:
     python kalman.py -p localhost -s 57413
@@ -9,10 +10,10 @@ desc=''' Example:
 
 # ---------- Constants
 
-dt = 0.5
+dt = 0.1
 c = 0
 
-I = numpy.array([
+I = numpy.matrix([
     [1, 0, 0, 0, 0, 0],
     [0, 1, 0, 0, 0, 0],
     [0, 0, 1, 0, 0, 0],
@@ -21,7 +22,7 @@ I = numpy.array([
     [0, 0, 0, 0, 0, 1]
     ])
 
-F = numpy.array([
+F = numpy.matrix([
     [1, dt, (dt*dt)/2, 0, 0, 0],
     [0, 1, dt, 0, 0, 0],
     [0, -c, 1, 0, 0, 0],
@@ -30,9 +31,7 @@ F = numpy.array([
     [0, 0, 0, 0, -c, 1]
     ])
 
-Ft = numpy.transpose(F)
-
-Sx = numpy.array([
+Sx = numpy.matrix([
     [0.1, 0, 0, 0, 0, 0],
     [0, 0.1, 0, 0, 0, 0],
     [0, 0, 100, 0, 0, 0],
@@ -41,30 +40,25 @@ Sx = numpy.array([
     [0, 0, 0, 0, 0, 100]
     ])
 
-H = numpy.array([
+S0 = numpy.matrix([
+    [100, 0, 0, 0, 0, 0],
+    [0, 0.1, 0, 0, 0, 0],
+    [0, 0, 0.1, 0, 0, 0],
+    [0, 0, 0, 100, 0, 0],
+    [0, 0, 0, 0, 0.1, 0],
+    [0, 0, 0, 0, 0, 0.1]
+    ])
+
+H = numpy.matrix([
     [1, 0, 0, 0, 0, 0],
     [0, 0, 0, 1, 0, 0]
     ])
 
-Ht = numpy.transpose(H)
-
 sd = 5
 
-Sz = numpy.array([
+Sz = numpy.matrix([
     [sd*sd, 0],
     [0, sd*sd]
-    ])
-
-St = numpy.ones(len(Sx))
-
-mu = [[1],[0],[0],[1],[0],[0]]
-
-z = [[0],[0]]
-
-# ---------- Variables
-
-Xt = numpy.array([
-    []
     ])
 
 # ---------- Classes
@@ -73,68 +67,66 @@ class Point():
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        # self.visited = False
     def __hash__(self):
         return hash((self.x, self.y))
     def __eq__(self, other):
         if not isinstance(other, Point):
-            # print "I DID FALSE!"
             return False
         else:
-            # print "I DID TRUE!"
             return (self.x, self.y) == (other.x, other.y)
 
 class Agent(object):
     def __init__(self, bzrc):
         self.bzrc = bzrc
         self.tank = self.bzrc.get_mytanks()[0]
+        self.enemy = self.bzrc.get_othertanks()[0]
         self.commands = []
         self.constants = self.bzrc.get_constants()
-        self.is_running = False
+        self.mu = [[0],[0],[0],[0],[0],[0]]
+        self.z = [[0],[0]] #z represents observed state. [[x], [y]]
+        self.Kt = 0
+        self.St = S0
+        self.world = numpy.zeros((800,800,3))
+    def tick(self):
+        #self.update()
+        self.updateEnemyPos()
+        self.Kt = calculateKalmanGain(self.St)
+        self.mu = calculateNewMu(self.mu, self.Kt, self.z)
+        self.St = calculateSigmaT(self.Kt, self.St)
+        #print "Kalman Gain: " + str(self.Kt)
+        #print "Mu: " + str(self.mu)
+        #print "Sigma T: " + str(self.St)
     def update(self):
         self.tank = self.bzrc.get_mytanks()[0]
-    def _run(self):
-        self.is_running = False
-        self.start()
-        self.update()
-        self.evalAndMove()
-    def start(self):
-        if not self.is_running:
-            self._timer = threading.Timer(dt, self._run)
-            self._timer.start()
-            self.is_running = True
-    def stop(self):
-        if hasattr(self, '_timer'):
-            self._timer.cancel()
-        self.is_running = False
-    def getXt(self):
-        self.update()
-        return numpy.array([
-                [self.tank.x],
-                [0],
-                [0],
-                [self.tank.y],
-                [0],
-                [0]
-                ])
-    # def evalAndMove(self):
+    def updateEnemyPos(self):
+        self.enemy = self.bzrc.get_othertanks()[0]
+        self.z = [[self.enemy.x], [self.enemy.y]]
+    def plotWorld(self):
+        newX = self.getPlotX(self.enemy.x)
+        newY = self.getPlotY(self.enemy.y)
 
+        muX = self.getPlotX(int(self.mu[0][0]))
+        muY = self.getPlotY(int(self.mu[3][0]))
+        self.world[newY, newX] = [0,255,0]
+        self.world[muY, muX] = [0, 1, 255]
+        cv2.imshow("World", self.world)
+        cv2.waitKey(1)
+    def getPlotX(self, x):
+        return x + 400
+    def getPlotY(self, y):
+        return 400 - y
     
 # ---------- Functions
 
-def calculateKalmanGain():
-    part1 = dot(dot(F, St) , Ft) + Sx
-    Kt = dot(dot(part1, Ht), pow(dot(dot(H, part1),  Ht) + Sz, -1))
-    return Kt
+def calculateKalmanGain(St):
+    model_uncertainty = F * St * F.T + Sx
+    return model_uncertainty *  H.T * numpy.linalg.inv( H * model_uncertainty * H.T + Sz )
 
-#z represents observed state? [[x], [y]]?
-def calculateNewMu(mu, Kt, z):
-    mu = dot(F, mu) + dot( Kt,(z - dot(dot(H, F), mu)))
-    return mu
+def calculateNewMu(mu, Kt_1, z):
+    return F * mu + Kt_1 * (z - H * F * mu)
 
 def calculateSigmaT(Kt, St):
-    St = dot( I - dot(Kt, H), dot(dot(F, St), Ft) + Sx)
-    return St
+    return (I - Kt * H) * (F * St * F.T + Sx)
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
@@ -183,8 +175,18 @@ def getRandomPoint(target_x, target_y):
         if getDistance(Point(x, y), Point(target_x, target_y)) <= 325:
             return Point(x, y)
 
-def runTimer(bzrc, agent, type, log=False):
-    
+def runTimer(bzrc, agent, log=False):
+    try:
+        prev_time = time.time()
+        while True:
+            time_diff = time.time() - prev_time
+            if time_diff >= dt:
+                agent.tick()
+                agent.plotWorld()
+                prev_time = time.time()
+    except KeyboardInterrupt:
+        print "Exiting due to keyboard interrupt."
+        bzrc.close()
 
 # ---------- main
 
@@ -193,7 +195,6 @@ def readCommandLine():
     parser.add_argument('--host', '-p', required=True, default='localhost', help='Hostname to connect to')
     parser.add_argument('--socket', '-s', required=True, default=0, help='Team socket to connect to')
     parser.add_argument('--log', '-l', required=False, default=False, help='Boolean value for logging or no logging')
-    parser.add_argument('--type', '-t', required=True, default=1, help='{1:"sitting duck", 2:"constant x,y", 3:"wild pigeon"')
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -209,4 +210,4 @@ if __name__ == '__main__':
     else:
         log = False
     bzrc, agent = startRobot(hostname, socket)
-    runTimer(bzrc, agent, args.type, log)
+    runTimer(bzrc, agent, log=False)
