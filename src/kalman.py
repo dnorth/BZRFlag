@@ -1,5 +1,6 @@
 from bzrc import BZRC, Command
 import math, numpy
+from numpy import dot
 
 desc=''' Example:
     python kalman.py -p localhost -s 57413
@@ -30,7 +31,7 @@ F = numpy.array([
 
 Ft = numpy.transpose(F)
 
-E_x = numpy.array([
+Sx = numpy.array([
     [0.1, 0, 0, 0, 0, 0],
     [0, 0.1, 0, 0, 0, 0],
     [0, 0, 100, 0, 0, 0],
@@ -48,10 +49,12 @@ Ht = numpy.transpose(H)
 
 sd = 5
 
-E_z = numpy.array([
+Sz = numpy.array([
     [sd*sd, 0],
     [0, sd*sd]
     ])
+
+St = numpy.ones(len(Sx))
 
 # ---------- Agent
 
@@ -79,6 +82,11 @@ class Agent(object):
 
     
 # ---------- Functions
+
+def calculateKalmanGain():
+    part1 = dot(dot(F, St) , Ft) + Sx
+    kT = dot(dot(part1, Ht), pow(dot(dot(H, part1),  Ht) + Sz, -1))
+    return kT
 
 def startRobot(hostname, socket):
     bzrc = BZRC(hostname, socket)
