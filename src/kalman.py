@@ -87,34 +87,45 @@ class Agent(object):
         self.Kt = 0
         self.St = S0
         self.world = numpy.zeros((800,800,3))
+        self.futureMu = self.mu
     def tick(self):
         #self.update()
         self.updateEnemyPos()
         self.Kt = calculateKalmanGain(self.St)
         self.mu = calculateNewMu(self.mu, self.Kt, self.z)
         self.St = calculateSigmaT(self.Kt, self.St)
-        #print "Kalman Gain: " + str(self.Kt)
-        #print "Mu: " + str(self.mu)
-        #print "Sigma T: " + str(self.St)
+        self.futureMu = self.mu
+        for x in range(3):
+            self.futureMu = calculateFutureMu(self.futureMu)
+        while not facingAngle(self.tank, self.futureMu[0][0], self.futureMu[3][0]):
+            self.update()
+            turnToPosition(self.bzrc, self.tank, self.futureMu[0][0], self.futureMu[3][0])
+        self.bzrc.angvel(self.tank.index, 0)
+        self.bzrc.shoot(self.tank.index)
     def update(self):
         self.tank = self.bzrc.get_mytanks()[0]
     def updateEnemyPos(self):
         self.enemy = self.bzrc.get_othertanks()[0]
         self.z = [[self.enemy.x], [self.enemy.y]]
     def plotWorld(self):
-        newX = self.getPlotX(self.enemy.x)
-        newY = self.getPlotY(self.enemy.y)
+            newX = self.getPlotX(self.enemy.x)
+            newY = self.getPlotY(self.enemy.y)
 
-        muX = self.getPlotX(int(self.mu[0][0]))
-        muY = self.getPlotY(int(self.mu[3][0]))
-        self.world[newY, newX] = [0,255,0]
-        self.world[muY, muX] = [0, 1, 255]
-        cv2.imshow("World", self.world)
-        cv2.waitKey(1)
+            muX = self.getPlotX(int(self.mu[0][0]))
+            muY = self.getPlotY(int(self.mu[3][0]))
+
+            predX = self.getPlotX(int(self.futureMu[0][0]))
+            predY = self.getPlotY(int(self.futureMu[3][0]))
+
+            self.world[newY, newX] = [0,255,0]
+            #self.world[muY, muX] = [0, 1, 255]
+            self.world[predY, predX] = [242, 50, 255]
+            cv2.imshow("World", self.world)
+            cv2.waitKey(1)
     def getPlotX(self, x):
-        return numpy.clip(x + 400, 0, 800) 
+        return numpy.clip(x + 400, 0, 799) 
     def getPlotY(self, y):
-        return numpy.clip(400 - y, 0, 800)
+        return numpy.clip(400 - y, 0, 799)
     
 # ---------- Functions
 
@@ -124,6 +135,9 @@ def calculateKalmanGain(St):
 
 def calculateNewMu(mu, Kt_1, z):
     return F * mu + Kt_1 * (z - H * F * mu)
+
+def calculateFutureMu(mu):
+    return F * mu
 
 def calculateSigmaT(Kt, St):
     return (I - Kt * H) * (F * St * F.T + Sx)
@@ -154,7 +168,8 @@ def facingAngle(tank, target_x, target_y):
     target_angle = math.atan2(target_y - tank.y,
                     target_x - tank.x)
     relative_angle = normalize_angle(target_angle - tank.angle)
-    return relative_angle < 0.1
+    print relative_angle
+    return abs(relative_angle) < 0.1
 
 def turnToPosition(bzrc, tank, target_x, target_y):
     """Set command to move to given coordinates."""
@@ -181,8 +196,9 @@ def runTimer(bzrc, agent, log=False):
         while True:
             time_diff = time.time() - prev_time
             if time_diff >= dt:
-                agent.tick()
-                agent.plotWorld()
+                if agent.enemy.status == "alive":
+                    agent.tick()
+                    agent.plotWorld()
                 prev_time = time.time()
     except KeyboardInterrupt:
         print "Exiting due to keyboard interrupt."
