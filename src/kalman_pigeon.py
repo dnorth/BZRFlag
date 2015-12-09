@@ -2,9 +2,10 @@ from bzrc import BZRC, Command
 import math, numpy, argparse
 from numpy import dot
 from random import randint
+from time import sleep
 
 desc=''' Example:
-    python kalman.py -p localhost -s 57413 -t [1, 2, 3]
+    python kalman_pigeon.py -p localhost -s 57413 -t [1, 2, 3]
     '''
 
 class Point():
@@ -50,6 +51,13 @@ class Agent(object):
                 break
         self.bzrc.angvel(self.tank.index, 0)
         self.bzrc.speed(self.tank.index, 1)
+    def type3(self):
+        while True:
+            self.update()
+            enemy = self.bzrc.get_othertanks()[0]
+            randPoint = getRandomPoint(int(enemy.x), int(enemy.y))
+            moveToPosition(self.bzrc, self.tank, randPoint.x, randPoint.y)
+            sleep(3)
     # def evalAndMove(self):
 
 def startRobot(hostname, socket):
@@ -72,6 +80,13 @@ def facingAngle(tank, target_x, target_y):
                     target_x - tank.x)
     relative_angle = normalize_angle(target_angle - tank.angle)
     return relative_angle < 0.5
+
+def moveToPosition(bzrc, tank, target_x, target_y):
+    """Set command to move to given coordinates."""
+    target_angle = math.atan2(target_y - tank.y,
+                    target_x - tank.x)
+    relative_angle = normalize_angle(target_angle - tank.angle)
+    bzrc.do_commands([Command(tank.index, 1, 2 * relative_angle, False)])
 
 def turnToPosition(bzrc, tank, target_x, target_y):
     """Set command to move to given coordinates."""
