@@ -169,7 +169,7 @@ def facingAngle(tank, target_x, target_y):
     target_angle = math.atan2(target_y - tank.y,
                     target_x - tank.x)
     relative_angle = normalize_angle(target_angle - tank.angle)
-    return abs(relative_angle) < 0.01
+    return abs(relative_angle) < 0.1
 
 def turnToPosition(bzrc, tank, target_x, target_y):
     """Set command to move to given coordinates."""
