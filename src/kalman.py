@@ -89,19 +89,20 @@ class Agent(object):
         self.world = numpy.zeros((800,800,3))
         self.futureMu = self.mu
     def tick(self):
-        #self.update()
-        self.updateEnemyPos()
+        self.update()
         self.Kt = calculateKalmanGain(self.St)
         self.mu = calculateNewMu(self.mu, self.Kt, self.z)
         self.St = calculateSigmaT(self.Kt, self.St)
         self.futureMu = self.mu
-        for x in range(3):
+        iterations = int(getDistance(self.tank, self.enemy) / 18)
+        print iterations
+        for x in range(iterations):
             self.futureMu = calculateFutureMu(self.futureMu)
-        while not facingAngle(self.tank, self.futureMu[0][0], self.futureMu[3][0]):
-            self.update()
+        if not facingAngle(self.tank, self.futureMu[0][0], self.futureMu[3][0]):
             turnToPosition(self.bzrc, self.tank, self.futureMu[0][0], self.futureMu[3][0])
-        self.bzrc.angvel(self.tank.index, 0)
-        self.bzrc.shoot(self.tank.index)
+        else:
+            self.bzrc.angvel(self.tank.index, 0)
+            self.bzrc.shoot(self.tank.index)
     def update(self):
         self.tank = self.bzrc.get_mytanks()[0]
     def updateEnemyPos(self):
@@ -168,15 +169,14 @@ def facingAngle(tank, target_x, target_y):
     target_angle = math.atan2(target_y - tank.y,
                     target_x - tank.x)
     relative_angle = normalize_angle(target_angle - tank.angle)
-    print relative_angle
-    return abs(relative_angle) < 0.1
+    return abs(relative_angle) < 0.01
 
 def turnToPosition(bzrc, tank, target_x, target_y):
     """Set command to move to given coordinates."""
     target_angle = math.atan2(target_y - tank.y,
                     target_x - tank.x)
     relative_angle = normalize_angle(target_angle - tank.angle)
-    bzrc.do_commands([Command(tank.index, 0, 2 * relative_angle, False)])
+    bzrc.do_commands([Command(tank.index, 0, 8 * relative_angle, False)])
 
 def getDistance(p0, p1):
     return math.sqrt((p0.x - p1.x)**2 + (p0.y - p1.y)**2)
@@ -196,6 +196,7 @@ def runTimer(bzrc, agent, log=False):
         while True:
             time_diff = time.time() - prev_time
             if time_diff >= dt:
+                agent.updateEnemyPos()
                 if agent.enemy.status == "alive":
                     agent.tick()
                     agent.plotWorld()
