@@ -119,8 +119,9 @@ class Agent(object):
             predY = self.getPlotY(int(self.futureMu[3][0]))
 
             self.world[newY, newX] = [0,255,0]
-            #self.world[muY, muX] = [0, 1, 255]
+            self.world[muY, muX] = [0, 1, 255]
             self.world[predY, predX] = [242, 50, 255]
+            cv2.ellipse(self.world, (muX, muY), (int(self.St[0,0]), int(self.St[3,3])), 0, 0, 360, (0x00,0x4a,0x55), 1)
             cv2.imshow("World", self.world)
             cv2.waitKey(1)
     def getPlotX(self, x):
